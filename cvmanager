@@ -5,13 +5,14 @@ require 'yaml'
 require 'apipie-bindings'
 
 @options = {
-  :noop     => false,
-  :keep     => 5,
-  :uri      => 'https://localhost/',
-  :user     => 'admin',
-  :pass     => 'changeme',
-  :org      => 1,
-  :yamlfile => 'cvmanager.yaml',
+  :noop      => false,
+  :keep      => 5,
+  :uri       => 'https://localhost/',
+  :user      => 'admin',
+  :pass      => 'changeme',
+  :org       => 1,
+  :yamlfile  => 'cvmanager.yaml',
+  :lifecycle => 1,
 }
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: #{opts.program_name} ACTION [options]"
@@ -38,6 +39,9 @@ optparse = OptionParser.new do |opts|
   end
   opts.on("-c", "--config=FILE", "configuration in YAML format") do |c|
     @options[:yamlfile] = c
+  end
+  opts.on("-l", "--to-lifecycle-environemnt=ID", "which LE should the promote be done to") do |l|
+    @options[:lifecycle] = l
   end
   opts.on("-n", "--noop", "do not actually execute anything") do |n|
     @options[:noop] = true
@@ -146,10 +150,34 @@ def update()
 
 end
 
+def promote()
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+
+  ccvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+
+  ccvs['results'].each do |ccv|
+    next if ! ccv['composite']
+
+    puts ccv['name']
+
+    latest_version = ccv['versions'].sort_by { |v| v['version'] }.reverse[0]
+
+    if not latest_version['environment_ids'].index(@options[:lifecycle]) then
+      if not @options[:noop] then
+        api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
+      else
+        puts "[noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
+      end
+    end
+  end
+end
+
 action = ARGV.shift
 
 if action == 'clean' then
   clean
 elsif action == 'update' then
   update
+elsif action == 'promote' then
+  promote
 end
