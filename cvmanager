@@ -1,0 +1,155 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'yaml'
+require 'apipie-bindings'
+
+@options = {
+  :noop     => false,
+  :keep     => 5,
+  :uri      => 'https://localhost/',
+  :user     => 'admin',
+  :pass     => 'changeme',
+  :org      => 1,
+  :yamlfile => 'cvmanager.yaml',
+}
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: #{opts.program_name} ACTION [options]"
+  opts.version = "0.1"
+  
+  opts.separator ""
+  opts.separator "#{opts.summary_indent}ACTION can be any of [clean,update]"
+  opts.separator ""
+
+  opts.on("-U", "--uri=URI", "URI to the Satellite") do |u|
+    @options[:uri] = u
+  end
+  opts.on("-u", "--user=USER", "User to log in to Satellite") do |u|
+    @options[:user] = u
+  end
+  opts.on("-p", "--pass=PASS", "Password to log in to Satellite") do |p|
+    @options[:pass] = p
+  end
+  opts.on("-o", "--organization-id=ID", "ID of the Organization to clean up") do |o|
+    @options[:org] = o
+  end
+  opts.on("-k", "--keep=NUM", "how many unused versions should be kept") do |k|
+    @options[:keep] = k
+  end
+  opts.on("-c", "--config=FILE", "configuration in YAML format") do |c|
+    @options[:yamlfile] = c
+  end
+  opts.on("-n", "--noop", "do not actually execute anything") do |n|
+    @options[:noop] = true
+  end
+end
+optparse.parse!
+
+if ARGV.empty? then
+  puts optparse.help
+  exit
+end
+
+def clean()
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+
+  cvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+
+  cvs['results'].each do |cv|
+    keep = []
+    puts cv['name']
+    cv['versions'].sort_by { |v| v['version'] }.reverse.each do |version|
+    next if not version['environment_ids'].empty?
+    v = api.resource(:content_view_versions).call(:show, {:id => version['id']})
+    next if not v['composite_content_view_ids'].empty?
+    if keep.length < @options[:keep] then
+      keep.push(version)
+      puts "keeping #{version['version']}"
+    else
+      puts "removing #{version['version']}"
+      #puts version
+      if not @options[:noop] then
+        api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+      else
+        puts "[noop] would delete content view version with id #{version['id']}"
+      end
+    end
+    end
+  end
+end
+
+def update()
+  yaml = YAML.load_file(@options[:yamlfile])
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+
+  ccvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+
+  ccvs['results'].each do |ccv|
+    next if ! ccv['composite']
+
+    was_updated = false
+
+    puts ccv['name']
+
+    # loop through the components and check if they are uptodate
+    ccv['components'].each do |component|
+      puts " Checking #{component['content_view']['name']}"
+
+      # get the desired version for this component from the YAML
+      # either the version for the component in this CCV is set
+      # or it is set globally
+      # never touch non-mentioned components
+      if yaml[:ccv].has_key?(ccv['label']) and yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
+        desired_version = yaml[:ccv][ccv['label']][component['content_view']['label']]
+      elsif yaml[:cv].has_key?(component['content_view']['label']) then
+        desired_version = yaml[:cv][component['content_view']['label']]
+      else
+        desired_version = component['version']
+      end
+
+      # instead of hard-coding the versions, the user can also specify "latest"
+      if desired_version == 'latest' then
+        cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
+        desired_version = cvversions['results'][0]['version']
+      end
+
+      # if the version of the component does not match the one the user requested update it
+      if component['version'].to_s != desired_version.to_s then
+        puts "  Updating from #{component['version']} to #{desired_version}"
+        ids = Array.new(ccv['component_ids'])
+        ids.delete(component['id'])
+        cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id'], :version => desired_version})
+        desired_version_id = cvversions['results'][0]['id']
+        ids.push(desired_version_id)
+        puts "  Old components: #{ccv['component_ids']}"
+        puts "  New components: #{ids}"
+        # do the update
+        if not @options[:noop] then
+          api.resource(:content_views).call(:update, {:id => ccv['id'], component_ids => ids })
+        else
+          puts "[noop] updating CCV #{ccv['id']} to #{ids}"
+        end
+        was_updated = true
+      end
+    end
+
+    if was_updated then
+      puts " Publishing new version as CV had changes"
+      # do the publish
+      if not @options[:noop] then
+        api.resource(:content_views).call(:publish, {:id => ccv['id'], description => "automatic update"})
+      else
+        puts "[noop] publishing CV #{ccv['id']}"
+      end
+    end
+  end
+
+end
+
+action = ARGV.shift
+
+if action == 'clean' then
+  clean
+elsif action == 'update' then
+  update
+end
