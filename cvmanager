@@ -40,7 +40,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-c", "--config=FILE", "configuration in YAML format") do |c|
     @options[:yamlfile] = c
   end
-  opts.on("-l", "--to-lifecycle-environemnt=ID", "which LE should the promote be done to") do |l|
+  opts.on("-l", "--to-lifecycle-environemnt=ID", OptionParser::DecimalInteger, "which LE should the promote be done to") do |l|
     @options[:lifecycle] = l
   end
   opts.on("-n", "--noop", "do not actually execute anything") do |n|
