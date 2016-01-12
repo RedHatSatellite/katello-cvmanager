@@ -129,7 +129,7 @@ def update()
         puts "  New components: #{ids}"
         # do the update
         if not @options[:noop] then
-          api.resource(:content_views).call(:update, {:id => ccv['id'], component_ids => ids })
+          api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
         else
           puts "[noop] updating CCV #{ccv['id']} to #{ids}"
         end
@@ -141,7 +141,7 @@ def update()
       puts " Publishing new version as CV had changes"
       # do the publish
       if not @options[:noop] then
-        api.resource(:content_views).call(:publish, {:id => ccv['id'], description => "automatic update"})
+        api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
       else
         puts "[noop] publishing CV #{ccv['id']}"
       end
