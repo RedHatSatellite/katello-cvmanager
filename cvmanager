@@ -122,9 +122,9 @@ def update()
       # either the version for the component in this CCV is set
       # or it is set globally
       # never touch non-mentioned components
-      if @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
+      if @yaml[:ccv].is_a?(Hash) and @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
         desired_version = @yaml[:ccv][ccv['label']][component['content_view']['label']]
-      elsif @yaml[:cv].has_key?(component['content_view']['label']) then
+      elsif @yaml[:cv].is_a?(Hash) and @yaml[:cv].has_key?(component['content_view']['label']) then
         desired_version = @yaml[:cv][component['content_view']['label']]
       else
         desired_version = component['version']
