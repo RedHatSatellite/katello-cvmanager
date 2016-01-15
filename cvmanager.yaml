@@ -1,5 +1,12 @@
 ---
+:settings:
+  :user: admin
+  :pass: changeme
+  :uri: https://localhost
+  :org: 1
+  :lifecycle: 2
+  :keep: 5
 :cv:
- something: 1
+  something: 1
 :ccv:
- something: 2
+  something: 2
