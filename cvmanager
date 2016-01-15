@@ -4,16 +4,20 @@ require 'optparse'
 require 'yaml'
 require 'apipie-bindings'
 
-@options = {
+@defaults = {
   :noop      => false,
   :keep      => 5,
   :uri       => 'https://localhost/',
   :user      => 'admin',
   :pass      => 'changeme',
   :org       => 1,
-  :yamlfile  => 'cvmanager.yaml',
   :lifecycle => 1,
 }
+
+@options = {
+  :yamlfile  => 'cvmanager.yaml',
+}
+
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: #{opts.program_name} ACTION [options]"
   opts.version = "0.1"
@@ -54,6 +58,22 @@ if ARGV.empty? then
   exit
 end
 
+@yaml = YAML.load_file(@options[:yamlfile])
+
+if @yaml.has_key?(:settings) and @yaml[:settings].is_a?(Hash) then
+  @yaml[:settings].each do |key,val|
+    if not @options.has_key?(key) then
+      @options[key] = val
+    end
+  end
+end
+
+@defaults.each do |key,val|
+  if not @options.has_key?(key) then
+    @options[key] = val
+  end
+end
+
 def clean()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
@@ -83,7 +103,6 @@ def clean()
 end
 
 def update()
-  yaml = YAML.load_file(@options[:yamlfile])
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
   ccvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
@@ -103,10 +122,10 @@ def update()
       # either the version for the component in this CCV is set
       # or it is set globally
       # never touch non-mentioned components
-      if yaml[:ccv].has_key?(ccv['label']) and yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
-        desired_version = yaml[:ccv][ccv['label']][component['content_view']['label']]
-      elsif yaml[:cv].has_key?(component['content_view']['label']) then
-        desired_version = yaml[:cv][component['content_view']['label']]
+      if @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
+        desired_version = @yaml[:ccv][ccv['label']][component['content_view']['label']]
+      elsif @yaml[:cv].has_key?(component['content_view']['label']) then
+        desired_version = @yaml[:cv][component['content_view']['label']]
       else
         desired_version = component['version']
       end
