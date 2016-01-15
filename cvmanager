@@ -79,9 +79,15 @@ end
 def clean()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
-  cvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  cvs = []
+  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  cvs.concat(req['results'])
+  while (req['results'].length == req['per_page'].to_i)
+    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    cvs.concat(req['results'])
+  end
 
-  cvs['results'].each do |cv|
+  cvs.each do |cv|
     keep = []
     puts cv['name']
     cv['versions'].sort_by { |v| v['version'] }.reverse.each do |version|
@@ -107,9 +113,15 @@ end
 def update()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
-  ccvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  ccvs = []
+  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  ccvs.concat(req['results'])
+  while (req['results'].length == req['per_page'].to_i)
+    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    ccvs.concat(req['results'])
+  end
 
-  ccvs['results'].each do |ccv|
+  ccvs.each do |ccv|
     next if ! ccv['composite']
 
     was_updated = false
@@ -174,9 +186,15 @@ end
 def promote()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
-  ccvs = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  ccvs = []
+  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  ccvs.concat(req['results'])
+  while (req['results'].length == req['per_page'].to_i)
+    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    ccvs.concat(req['results'])
+  end
 
-  ccvs['results'].each do |ccv|
+  ccvs.each do |ccv|
     next if ! ccv['composite']
 
     puts ccv['name']
