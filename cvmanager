@@ -74,6 +74,8 @@ end
   end
 end
 
+@options[:keep] = @options[:keep].to_i
+
 def clean()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
 
