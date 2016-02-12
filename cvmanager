@@ -47,29 +47,29 @@ optparse = OptionParser.new do |opts|
   opts.on("-l", "--to-lifecycle-environemnt=ID", OptionParser::DecimalInteger, "which LE should the promote be done to") do |l|
     @options[:lifecycle] = l
   end
-  opts.on("-n", "--noop", "do not actually execute anything") do |n|
+  opts.on("-n", "--noop", "do not actually execute anything") do
     @options[:noop] = true
   end
 end
 optparse.parse!
 
-if ARGV.empty? then
+if ARGV.empty?
   puts optparse.help
   exit
 end
 
 @yaml = YAML.load_file(@options[:yamlfile])
 
-if @yaml.has_key?(:settings) and @yaml[:settings].is_a?(Hash) then
+if @yaml.has_key?(:settings) and @yaml[:settings].is_a?(Hash)
   @yaml[:settings].each do |key,val|
-    if not @options.has_key?(key) then
+    if not @options.has_key?(key)
       @options[key] = val
     end
   end
 end
 
 @defaults.each do |key,val|
-  if not @options.has_key?(key) then
+  if not @options.has_key?(key)
     @options[key] = val
   end
 end
@@ -91,21 +91,21 @@ def clean()
     keep = []
     puts cv['name']
     cv['versions'].sort_by { |v| v['version'] }.reverse.each do |version|
-    next if not version['environment_ids'].empty?
-    v = api.resource(:content_view_versions).call(:show, {:id => version['id']})
-    next if not v['composite_content_view_ids'].empty?
-    if keep.length < @options[:keep] then
-      keep.push(version)
-      puts "keeping #{version['version']}"
-    else
-      puts "removing #{version['version']}"
-      #puts version
-      if not @options[:noop] then
-        api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+      next if not version['environment_ids'].empty?
+      version_details = api.resource(:content_view_versions).call(:show, {:id => version['id']})
+      next if not version_details['composite_content_view_ids'].empty?
+      if keep.length < @options[:keep]
+        keep.push(version)
+        puts "keeping #{version['version']}"
       else
-        puts "[noop] would delete content view version with id #{version['id']}"
+        puts "removing #{version['version']}"
+        #puts version
+        if not @options[:noop]
+          api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+        else
+          puts "[noop] would delete content view version with id #{version['id']}"
+        end
       end
-    end
     end
   end
 end
@@ -136,22 +136,22 @@ def update()
       # either the version for the component in this CCV is set
       # or it is set globally
       # never touch non-mentioned components
-      if @yaml[:ccv].is_a?(Hash) and @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label']) then
+      if @yaml[:ccv].is_a?(Hash) and @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label'])
         desired_version = @yaml[:ccv][ccv['label']][component['content_view']['label']]
-      elsif @yaml[:cv].is_a?(Hash) and @yaml[:cv].has_key?(component['content_view']['label']) then
+      elsif @yaml[:cv].is_a?(Hash) and @yaml[:cv].has_key?(component['content_view']['label'])
         desired_version = @yaml[:cv][component['content_view']['label']]
       else
         desired_version = component['version']
       end
 
       # instead of hard-coding the versions, the user can also specify "latest"
-      if desired_version == 'latest' then
+      if desired_version == 'latest'
         cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
         desired_version = cvversions['results'][0]['version']
       end
 
       # if the version of the component does not match the one the user requested update it
-      if component['version'].to_s != desired_version.to_s then
+      if component['version'].to_s != desired_version.to_s
         puts "  Updating from #{component['version']} to #{desired_version}"
         ids = Array.new(ccv['component_ids'])
         ids.delete(component['id'])
@@ -161,7 +161,7 @@ def update()
         puts "  Old components: #{ccv['component_ids']}"
         puts "  New components: #{ids}"
         # do the update
-        if not @options[:noop] then
+        if not @options[:noop]
           api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
         else
           puts "[noop] updating CCV #{ccv['id']} to #{ids}"
@@ -170,10 +170,10 @@ def update()
       end
     end
 
-    if was_updated then
+    if was_updated
       puts " Publishing new version as CV had changes"
       # do the publish
-      if not @options[:noop] then
+      if not @options[:noop]
         api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
       else
         puts "[noop] publishing CV #{ccv['id']}"
@@ -201,8 +201,8 @@ def promote()
 
     latest_version = ccv['versions'].sort_by { |v| v['version'] }.reverse[0]
 
-    if not latest_version['environment_ids'].index(@options[:lifecycle]) then
-      if not @options[:noop] then
+    if not latest_version['environment_ids'].index(@options[:lifecycle])
+      if not @options[:noop]
         api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
       else
         puts "[noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
@@ -213,10 +213,10 @@ end
 
 action = ARGV.shift
 
-if action == 'clean' then
+if action == 'clean'
   clean
-elsif action == 'update' then
+elsif action == 'update'
   update
-elsif action == 'promote' then
+elsif action == 'promote'
   promote
 end
