@@ -129,6 +129,7 @@ def update()
     puts ccv['name']
 
     # loop through the components and check if they are uptodate
+    ids = Array.new(ccv['component_ids'])
     ccv['components'].each do |component|
       puts " Checking #{component['content_view']['name']}"
 
@@ -153,24 +154,26 @@ def update()
       # if the version of the component does not match the one the user requested update it
       if component['version'].to_s != desired_version.to_s
         puts "  Updating from #{component['version']} to #{desired_version}"
-        ids = Array.new(ccv['component_ids'])
+        oldids = ids.dup
         ids.delete(component['id'])
         cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id'], :version => desired_version})
         desired_version_id = cvversions['results'][0]['id']
         ids.push(desired_version_id)
-        puts "  Old components: #{ccv['component_ids']}"
+        puts "  Old components: #{oldids}"
         puts "  New components: #{ids}"
         # do the update
-        if not @options[:noop]
-          api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
-        else
-          puts "[noop] updating CCV #{ccv['id']} to #{ids}"
-        end
         was_updated = true
       end
     end
 
     if was_updated
+      #Change the member content view versions; We do this once at the end, so if there was multiple CV changes, its only one call
+      puts " Committing new content view versions"
+      if not @options[:noop]
+        api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
+      else
+        puts "[noop] updating CCV #{ccv['id']} to #{ids}"
+      end
       puts " Publishing new version as CV had changes"
       # do the publish
       if not @options[:noop]
