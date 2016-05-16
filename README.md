@@ -46,6 +46,7 @@ Example configuration for `cvmanager`:
       :user: admin
       :pass: changeme
       :uri: https://localhost
+      :timeout: 300
       :org: 1
       :lifecycle: 2
       :keep: 5
@@ -59,6 +60,7 @@ Example configuration for `cvmanager`:
 * `user`: username of a Satellite 6 user to execute the actions with
 * `pass`: password of the same user
 * `uri`: URI of the Satellite 6, `https://localhost` will work when executed directly on the Satellite machine
+* `timeout`: Timeout, in seconds, for any API calls made
 * `org`: Organization ID (not name) for managing content in
 * `livecycle`: target Lifecycle Environment ID (not name) for `promote`
 * `keep`: how many non-published versions of a Content View shall be kept when doing a `clean`
