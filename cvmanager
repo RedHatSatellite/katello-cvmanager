@@ -5,13 +5,14 @@ require 'yaml'
 require 'apipie-bindings'
 
 @defaults = {
-  :noop      => false,
-  :keep      => 5,
-  :uri       => 'https://localhost/',
-  :user      => 'admin',
-  :pass      => 'changeme',
-  :org       => 1,
-  :lifecycle => 1,
+  :noop       => false,
+  :keep       => 5,
+  :uri        => 'https://localhost/',
+  :timeout    => 300,
+  :user       => 'admin',
+  :pass       => 'changeme',
+  :org        => 1,
+  :lifecycle  => 1,
 }
 
 @options = {
@@ -28,6 +29,9 @@ optparse = OptionParser.new do |opts|
 
   opts.on("-U", "--uri=URI", "URI to the Satellite") do |u|
     @options[:uri] = u
+  end
+  opts.on("-t", "--timeout=TIMEOUT", "Timeout value in seconds for any API calls. -1 means never timeout") do |t|
+    @options[:timeout] = t
   end
   opts.on("-u", "--user=USER", "User to log in to Satellite") do |u|
     @options[:user] = u
@@ -77,7 +81,7 @@ end
 @options[:keep] = @options[:keep].to_i
 
 def clean()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
   cvs = []
   req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
@@ -111,7 +115,7 @@ def clean()
 end
 
 def update()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
   ccvs = []
   req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
@@ -187,7 +191,7 @@ def update()
 end
 
 def promote()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2'})
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
   ccvs = []
   req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})

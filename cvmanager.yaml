@@ -3,6 +3,7 @@
   :user: admin
   :pass: changeme
   :uri: https://localhost
+  :timeout: 300
   :org: 1
   :lifecycle: 2
   :keep: 5
