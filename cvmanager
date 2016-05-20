@@ -24,7 +24,7 @@ optparse = OptionParser.new do |opts|
   opts.version = "0.1"
   
   opts.separator ""
-  opts.separator "#{opts.summary_indent}ACTION can be any of [clean,update]"
+  opts.separator "#{opts.summary_indent}ACTION can be any of [clean,update,promote]"
   opts.separator ""
 
   opts.on("-U", "--uri=URI", "URI to the Satellite") do |u|
