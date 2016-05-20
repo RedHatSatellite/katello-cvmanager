@@ -103,7 +103,6 @@ def clean()
         puts "keeping #{version['version']}"
       else
         puts "removing #{version['version']}"
-        #puts version
         if not @options[:noop]
           api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
         else
