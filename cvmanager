@@ -3,6 +3,7 @@
 require 'optparse'
 require 'yaml'
 require 'apipie-bindings'
+require 'highline/import'
 
 @defaults = {
   :noop       => false,
@@ -10,7 +11,7 @@ require 'apipie-bindings'
   :uri        => 'https://localhost/',
   :timeout    => 300,
   :user       => 'admin',
-  :pass       => 'changeme',
+  :pass       => nil,
   :org        => 1,
   :lifecycle  => 1,
 }
@@ -76,6 +77,14 @@ end
   if not @options.has_key?(key)
     @options[key] = val
   end
+end
+
+if not @options[:user]
+  @options[:user] = ask('Satellite username: ')
+end
+
+if not @options[:pass]
+  @options[:pass] = ask('Satellite password: ') { |q| q.echo = false }
 end
 
 @options[:keep] = @options[:keep].to_i
