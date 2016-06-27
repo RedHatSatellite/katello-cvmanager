@@ -229,7 +229,7 @@ def promote()
 
     puts ccv['name']
 
-    latest_version = ccv['versions'].sort_by { |v| v['version'] }.reverse[0]
+    latest_version = ccv['versions'].sort_by { |v| v['version'].to_f }.reverse[0]
 
     if not latest_version['environment_ids'].index(@options[:lifecycle])
       if not @options[:noop]
