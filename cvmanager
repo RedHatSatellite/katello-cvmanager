@@ -46,7 +46,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-U", "--uri=URI", "URI to the Satellite") do |u|
     @options[:uri] = u
   end
-  opts.on("-t", "--timeout=TIMEOUT", "Timeout value in seconds for any API calls. -1 means never timeout") do |t|
+  opts.on("-t", "--timeout=TIMEOUT", OptionParser::DecimalInteger, "Timeout value in seconds for any API calls. -1 means never timeout") do |t|
     @options[:timeout] = t
   end
   opts.on("-u", "--user=USER", "User to log in to Satellite") do |u|
