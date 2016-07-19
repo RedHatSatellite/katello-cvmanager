@@ -31,6 +31,7 @@ require 'time'
   :org        => 1,
   :lifecycle  => 1,
   :force      => false,
+  :wait       => false,
 }
 
 @options = {
@@ -74,6 +75,9 @@ optparse = OptionParser.new do |opts|
   end
   opts.on("-f", "--force", "force actions that otherwise would have been skipped") do
     @options[:force] = true
+  end
+  opts.on("--wait", "wait for started tasks to finish") do
+    @options[:wait] = true
   end
 end
 optparse.parse!
@@ -249,6 +253,8 @@ end
 def publish()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
+  tasks = []
+
   cvs = []
   req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   cvs.concat(req['results'])
@@ -274,9 +280,29 @@ def publish()
     end
     if needs_publish or @options[:force]
       if not @options[:noop]
-        api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
+        req = api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
+        tasks << req['id']
       else
         puts "[noop] Publishing #{cv['name']}"
+      end
+    end
+
+    if @options[:wait]
+      need_wait = tasks
+      wait_secs = 10
+      while not need_wait.empty?
+        puts "waiting #{wait_secs} for pending tasks: #{need_wait}"
+        sleep wait_secs
+        if wait_secs < 60
+          wait_secs += 10
+        end
+        need_wait = []
+        tasks.each do |task_id|
+          req = api.resource(:foreman_tasks).call(:show, {:id => task_id})
+          if req['pending']
+            need_wait << task_id
+          end
+        end
       end
     end
   end
