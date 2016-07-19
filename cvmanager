@@ -30,6 +30,7 @@ require 'time'
   :pass       => nil,
   :org        => 1,
   :lifecycle  => 1,
+  :force      => false,
 }
 
 @options = {
@@ -70,6 +71,9 @@ optparse = OptionParser.new do |opts|
   end
   opts.on("-n", "--noop", "do not actually execute anything") do
     @options[:noop] = true
+  end
+  opts.on("-f", "--force", "force actions that otherwise would have been skipped") do
+    @options[:force] = true
   end
 end
 optparse.parse!
@@ -268,7 +272,7 @@ def publish()
         needs_publish = true
       end
     end
-    if needs_publish
+    if needs_publish or @options[:force]
       if not @options[:noop]
         api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
       else
