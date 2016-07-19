@@ -19,6 +19,7 @@ require 'optparse'
 require 'yaml'
 require 'apipie-bindings'
 require 'highline/import'
+require 'time'
 
 @defaults = {
   :noop       => false,
@@ -241,6 +242,42 @@ def promote()
   end
 end
 
+def publish()
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
+
+  cvs = []
+  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  cvs.concat(req['results'])
+  while (req['results'].length == req['per_page'].to_i)
+    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    cvs.concat(req['results'])
+  end
+
+  cvs.each do |cv|
+    next if not @yaml[:publish].include?(cv['name'])
+
+    puts cv['name']
+
+    needs_publish = false
+    cv_last_published = Time.xmlschmea(cv['last_published']) rescue Time.parse(cv['last_published'])
+    cv['repository_ids'].each do |repo_id|
+      repo = api.resource(:repositories).call(:show, {:id => repo_id})
+      repo_last_sync = Time.xmlschmea(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
+      if repo_last_sync > cv_last_published
+        puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
+        needs_publish = true
+      end
+    end
+    if needs_publish
+      if not @options[:noop]
+        api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
+      else
+        puts "[noop] Publishing #{cv['name']}"
+      end
+    end
+  end
+end
+
 action = ARGV.shift
 
 if action == 'clean'
@@ -249,4 +286,6 @@ elsif action == 'update'
   update
 elsif action == 'promote'
   promote
+elsif action == 'publish'
+  publish
 end
