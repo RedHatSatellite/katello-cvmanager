@@ -241,7 +241,7 @@ def promote()
     latest_version = ccv['versions'].sort_by { |v| v['version'].to_f }.reverse[0]
     next if ! latest_version
 
-    if not latest_version['environment_ids'].index(@options[:lifecycle])
+    if not latest_version['environment_ids'].include?(@options[:lifecycle])
       if not @options[:noop]
         api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
       else
