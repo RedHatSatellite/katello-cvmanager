@@ -111,14 +111,15 @@ if not @options[:pass]
   @options[:pass] = ask('Satellite password: ') { |q| q.echo = false }
 end
 
-def clean()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
+@api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
+
+def clean()
   cvs = []
-  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   cvs.concat(req['results'])
   while (req['results'].length == req['per_page'].to_i)
-    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
     cvs.concat(req['results'])
   end
 
@@ -127,7 +128,7 @@ def clean()
     puts cv['name']
     cv['versions'].sort_by { |v| v['version'].to_f }.reverse.each do |version|
       next if not version['environment_ids'].empty?
-      version_details = api.resource(:content_view_versions).call(:show, {:id => version['id']})
+      version_details = @api.resource(:content_view_versions).call(:show, {:id => version['id']})
       next if not version_details['composite_content_view_ids'].empty?
       if keep.length < @options[:keep]
         keep.push(version)
@@ -135,7 +136,7 @@ def clean()
       else
         puts "removing #{version['version']}"
         if not @options[:noop]
-          api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+          @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
         else
           puts "[noop] would delete content view version with id #{version['id']}"
         end
@@ -145,13 +146,11 @@ def clean()
 end
 
 def update()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
-
   ccvs = []
-  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   ccvs.concat(req['results'])
   while (req['results'].length == req['per_page'].to_i)
-    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
     ccvs.concat(req['results'])
   end
 
@@ -181,7 +180,7 @@ def update()
 
       # instead of hard-coding the versions, the user can also specify "latest"
       if desired_version == 'latest'
-        cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
+        cvversions = @api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
         desired_version = cvversions['results'][0]['version']
       end
 
@@ -190,7 +189,7 @@ def update()
         puts "  Updating from #{component['version']} to #{desired_version}"
         oldids = ids.dup
         ids.delete(component['id'])
-        cvversions = api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id'], :version => desired_version})
+        cvversions = @api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id'], :version => desired_version})
         desired_version_id = cvversions['results'][0]['id']
         ids.push(desired_version_id)
         puts "  Old components: #{oldids}"
@@ -204,14 +203,14 @@ def update()
       #Change the member content view versions; We do this once at the end, so if there was multiple CV changes, its only one call
       puts " Committing new content view versions"
       if not @options[:noop]
-        api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
+        @api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
       else
         puts "[noop] updating CCV #{ccv['id']} to #{ids}"
       end
       puts " Publishing new version as CV had changes"
       # do the publish
       if not @options[:noop]
-        api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
+        @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
       else
         puts "[noop] publishing CV #{ccv['id']}"
       end
@@ -221,15 +220,13 @@ def update()
 end
 
 def promote()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
-
   tasks = []
 
   ccvs = []
-  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   ccvs.concat(req['results'])
   while (req['results'].length == req['per_page'].to_i)
-    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
     ccvs.concat(req['results'])
   end
 
@@ -243,7 +240,7 @@ def promote()
 
     if not latest_version['environment_ids'].include?(@options[:lifecycle])
       if not @options[:noop]
-        req = api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
+        req = @api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
         tasks << req['id']
       else
         puts "[noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
@@ -255,15 +252,13 @@ def promote()
 end
 
 def publish()
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
-
   tasks = []
 
   cvs = []
-  req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
+  req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   cvs.concat(req['results'])
   while (req['results'].length == req['per_page'].to_i)
-    req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
+    req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true, :per_page => req['per_page'], :page => req['page'].to_i+1})
     cvs.concat(req['results'])
   end
 
@@ -275,7 +270,7 @@ def publish()
     needs_publish = false
     cv_last_published = Time.xmlschmea(cv['last_published']) rescue Time.parse(cv['last_published'])
     cv['repository_ids'].each do |repo_id|
-      repo = api.resource(:repositories).call(:show, {:id => repo_id})
+      repo = @api.resource(:repositories).call(:show, {:id => repo_id})
       repo_last_sync = Time.xmlschmea(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
       if repo_last_sync > cv_last_published
         puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
@@ -284,7 +279,7 @@ def publish()
     end
     if needs_publish or @options[:force]
       if not @options[:noop]
-        req = api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
+        req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
         tasks << req['id']
       else
         puts "[noop] Publishing #{cv['name']}"
@@ -295,7 +290,6 @@ def publish()
 end
 
 def wait(tasks)
-  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
   if @options[:wait]
     need_wait = tasks
     wait_secs = 10
@@ -307,7 +301,7 @@ def wait(tasks)
       end
       need_wait = []
       tasks.each do |task_id|
-        req = api.resource(:foreman_tasks).call(:show, {:id => task_id})
+        req = @api.resource(:foreman_tasks).call(:show, {:id => task_id})
         if req['pending']
           need_wait << task_id
         end
