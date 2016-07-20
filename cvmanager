@@ -225,6 +225,8 @@ end
 def promote()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
+  tasks = []
+
   ccvs = []
   req = api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   ccvs.concat(req['results'])
@@ -243,12 +245,15 @@ def promote()
 
     if not latest_version['environment_ids'].include?(@options[:lifecycle])
       if not @options[:noop]
-        api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
+        req = api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
+        tasks << req['id']
       else
         puts "[noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
       end
     end
   end
+
+  wait(tasks)
 end
 
 def publish()
@@ -287,22 +292,26 @@ def publish()
         puts "[noop] Publishing #{cv['name']}"
       end
     end
+  end
+  wait(tasks)
+end
 
-    if @options[:wait]
-      need_wait = tasks
-      wait_secs = 10
-      while not need_wait.empty?
-        puts "waiting #{wait_secs} for pending tasks: #{need_wait}"
-        sleep wait_secs
-        if wait_secs < 60
-          wait_secs += 10
-        end
-        need_wait = []
-        tasks.each do |task_id|
-          req = api.resource(:foreman_tasks).call(:show, {:id => task_id})
-          if req['pending']
-            need_wait << task_id
-          end
+def wait(tasks)
+  api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
+  if @options[:wait]
+    need_wait = tasks
+    wait_secs = 10
+    while not need_wait.empty?
+      puts "waiting #{wait_secs} for pending tasks: #{need_wait}"
+      sleep wait_secs
+      if wait_secs < 60
+        wait_secs += 10
+      end
+      need_wait = []
+      tasks.each do |task_id|
+        req = api.resource(:foreman_tasks).call(:show, {:id => task_id})
+        if req['pending']
+          need_wait << task_id
         end
       end
     end
