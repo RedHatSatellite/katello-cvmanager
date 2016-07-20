@@ -115,6 +115,7 @@ end
 
 
 def clean()
+  tasks = []
   cvs = []
   req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   cvs.concat(req['results'])
@@ -136,13 +137,16 @@ def clean()
       else
         puts "removing #{version['version']}"
         if not @options[:noop]
-          @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+          req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+          tasks << req['id']
         else
           puts "[noop] would delete content view version with id #{version['id']}"
         end
       end
     end
   end
+
+  wait(tasks)
 end
 
 def update()
