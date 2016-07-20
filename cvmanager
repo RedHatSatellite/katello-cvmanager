@@ -61,7 +61,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-o", "--organization-id=ID", "ID of the Organization to clean up") do |o|
     @options[:org] = o
   end
-  opts.on("-k", "--keep=NUM", "how many unused versions should be kept") do |k|
+  opts.on("-k", "--keep=NUM", OptionParser::DecimalInteger, "how many unused versions should be kept") do |k|
     @options[:keep] = k
   end
   opts.on("-c", "--config=FILE", "configuration in YAML format") do |c|
@@ -110,8 +110,6 @@ end
 if not @options[:pass]
   @options[:pass] = ask('Satellite password: ') { |q| q.echo = false }
 end
-
-@options[:keep] = @options[:keep].to_i
 
 def clean()
   api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
