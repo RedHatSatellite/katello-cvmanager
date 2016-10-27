@@ -43,7 +43,7 @@ optparse = OptionParser.new do |opts|
   opts.version = "0.1"
   
   opts.separator ""
-  opts.separator "#{opts.summary_indent}ACTION can be any of [clean,update,promote]"
+  opts.separator "#{opts.summary_indent}ACTION can be any of [clean,update,publish,promote]"
   opts.separator ""
 
   opts.on("-U", "--uri=URI", "URI to the Satellite") do |u|
@@ -58,7 +58,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-p", "--pass=PASS", "Password to log in to Satellite") do |p|
     @options[:pass] = p
   end
-  opts.on("-o", "--organization-id=ID", "ID of the Organization to clean up") do |o|
+  opts.on("-o", "--organization-id=ID", "ID of the Organization to manage CVs in") do |o|
     @options[:org] = o
   end
   opts.on("-k", "--keep=NUM", OptionParser::DecimalInteger, "how many unused versions should be kept") do |k|
@@ -126,21 +126,21 @@ def clean()
 
   cvs.each do |cv|
     keep = []
-    puts cv['name']
+    puts "Inspecting #{cv['name']}"
     cv['versions'].sort_by { |v| v['version'].to_f }.reverse.each do |version|
       next if not version['environment_ids'].empty?
       version_details = @api.resource(:content_view_versions).call(:show, {:id => version['id']})
       next if not version_details['composite_content_view_ids'].empty?
       if keep.length < @options[:keep]
         keep.push(version)
-        puts "keeping #{version['version']}"
+        puts " keeping #{version['version']}"
       else
-        puts "removing #{version['version']}"
+        puts " removing #{version['version']}"
         if not @options[:noop]
           req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
           tasks << req['id']
         else
-          puts "[noop] would delete content view version with id #{version['id']}"
+          puts " [noop] would delete content view version with id #{version['id']}"
         end
       end
     end
@@ -163,7 +163,7 @@ def update()
 
     was_updated = false
 
-    puts ccv['name']
+    puts "Inspecting #{ccv['name']}"
 
     # loop through the components and check if they are uptodate
     ids = Array.new(ccv['component_ids'])
@@ -209,14 +209,14 @@ def update()
       if not @options[:noop]
         @api.resource(:content_views).call(:update, {:id => ccv['id'], :component_ids => ids })
       else
-        puts "[noop] updating CCV #{ccv['id']} to #{ids}"
+        puts "  [noop] updating CCV #{ccv['id']} to #{ids}"
       end
-      puts " Publishing new version as CV had changes"
+      puts " Publishing new version as CCV had changes"
       # do the publish
       if not @options[:noop]
         @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
       else
-        puts "[noop] publishing CV #{ccv['id']}"
+        puts "  [noop] publishing CCV #{ccv['id']}"
       end
     end
   end
@@ -237,7 +237,7 @@ def promote()
   ccvs.each do |ccv|
     next if ! ccv['composite']
 
-    puts ccv['name']
+    puts "Inspecting #{ccv['name']}"
 
     latest_version = ccv['versions'].sort_by { |v| v['version'].to_f }.reverse[0]
     next if ! latest_version
@@ -247,7 +247,7 @@ def promote()
         req = @api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
         tasks << req['id']
       else
-        puts "[noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
+        puts " [noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
       end
     end
   end
@@ -269,7 +269,7 @@ def publish()
   cvs.each do |cv|
     next if not @yaml[:publish].include?(cv['name'])
 
-    puts cv['name']
+    puts "Inspecting #{cv['name']}"
 
     needs_publish = false
     cv_last_published = Time.xmlschmea(cv['last_published']) rescue Time.parse(cv['last_published'])
@@ -286,7 +286,7 @@ def publish()
         req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
         tasks << req['id']
       else
-        puts "[noop] Publishing #{cv['name']}"
+        puts " [noop] Publishing #{cv['name']}"
       end
     end
   end
