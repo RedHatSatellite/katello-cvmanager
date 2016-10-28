@@ -240,6 +240,7 @@ def promote()
 
   ccvs.each do |ccv|
     next if ! ccv['composite']
+    next if not @yaml[:promote].include?(ccv['name'])
 
     puts "Inspecting #{ccv['name']}"
 
