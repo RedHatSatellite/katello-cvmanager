@@ -248,6 +248,7 @@ def promote()
     next if ! latest_version
 
     if not latest_version['environment_ids'].include?(@options[:lifecycle])
+      puts " Promoting latest version to lifecycle-environment #{@options[:lifecycle]}"
       if not @options[:noop]
         req = @api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
         tasks << req['id']
