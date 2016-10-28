@@ -22,16 +22,17 @@ require 'highline/import'
 require 'time'
 
 @defaults = {
-  :noop       => false,
-  :keep       => 5,
-  :uri        => 'https://localhost/',
-  :timeout    => 300,
-  :user       => 'admin',
-  :pass       => nil,
-  :org        => 1,
-  :lifecycle  => 1,
-  :force      => false,
-  :wait       => false,
+  :noop        => false,
+  :keep        => 5,
+  :uri         => 'https://localhost/',
+  :timeout     => 300,
+  :user        => 'admin',
+  :pass        => nil,
+  :org         => 1,
+  :lifecycle   => 1,
+  :force       => false,
+  :wait        => false,
+  :promote_cvs => false,
 }
 
 @options = {
@@ -239,7 +240,7 @@ def promote()
   end
 
   ccvs.each do |ccv|
-    next if ! ccv['composite']
+    next if not ccv['composite'] and not @options[:promote_cvs]
     next if not @yaml[:promote].include?(ccv['name'])
 
     puts "Inspecting #{ccv['name']}"
