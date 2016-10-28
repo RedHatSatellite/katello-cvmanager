@@ -279,10 +279,10 @@ def publish()
     puts "Inspecting #{cv['name']}"
 
     needs_publish = false
-    cv_last_published = Time.xmlschmea(cv['last_published']) rescue Time.parse(cv['last_published'])
+    cv_last_published = Time.xmlschema(cv['last_published']) rescue Time.parse(cv['last_published'])
     cv['repository_ids'].each do |repo_id|
       repo = @api.resource(:repositories).call(:show, {:id => repo_id})
-      repo_last_sync = Time.xmlschmea(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
+      repo_last_sync = Time.xmlschema(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
       if repo_last_sync > cv_last_published
         puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
         needs_publish = true
