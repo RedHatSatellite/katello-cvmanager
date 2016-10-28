@@ -150,6 +150,8 @@ def clean()
 end
 
 def update()
+  tasks = []
+
   ccvs = []
   req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   ccvs.concat(req['results'])
@@ -214,13 +216,15 @@ def update()
       puts " Publishing new version as CCV had changes"
       # do the publish
       if not @options[:noop]
-        @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
+        req = @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
+        tasks << req['id']
       else
         puts "  [noop] publishing CCV #{ccv['id']}"
       end
     end
   end
 
+  wait(tasks)
 end
 
 def promote()
