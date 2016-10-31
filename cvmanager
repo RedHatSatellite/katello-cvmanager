@@ -112,6 +112,18 @@ if not @options[:pass]
   @options[:pass] = ask('Satellite password: ') { |q| q.echo = false }
 end
 
+# sanitize non-complete config files
+[:cv, :ccv].each do |key|
+  if not @yaml.has_key?(key)
+    @yaml[key] = {}
+  end
+end
+[:publish, :promote].each do |key|
+  if not @yaml.has_key?(key)
+    @yaml[key] = []
+  end
+end
+
 @api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
 
