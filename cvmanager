@@ -291,10 +291,18 @@ def publish()
     puts "Inspecting #{cv['name']}"
 
     needs_publish = false
-    cv_last_published = Time.xmlschema(cv['last_published']) rescue Time.parse(cv['last_published'])
+    if cv.has_key?('last_published') and cv['last_published']
+      cv_last_published = Time.xmlschema(cv['last_published']) rescue Time.parse(cv['last_published'])
+    else
+      cv_last_published = Time.new(0)
+    end
     cv['repository_ids'].each do |repo_id|
       repo = @api.resource(:repositories).call(:show, {:id => repo_id})
-      repo_last_sync = Time.xmlschema(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
+      if repo.has_key?('last_sync') and repo['last_sync'].has_key?('ended_at') and repo['last_sync']['ended_at']
+        repo_last_sync = Time.xmlschema(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
+      else
+        repo_last_sync = Time.new(0)
+      end
       if repo_last_sync > cv_last_published
         puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
         needs_publish = true
