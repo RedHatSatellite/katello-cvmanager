@@ -253,7 +253,7 @@ def promote()
 
   ccvs.each do |ccv|
     next if not ccv['composite'] and not @options[:promote_cvs]
-    next if not @yaml[:promote].include?(ccv['name'])
+    next if not @yaml[:promote].include?(ccv['name']) and not @yaml[:promote].include?("all")
 
     puts "Inspecting #{ccv['name']}"
 
@@ -327,19 +327,28 @@ end
 def wait(tasks)
   if @options[:wait]
     need_wait = tasks
-    wait_secs = 10
+    last_need_wait = []
+    silence = false
+    wait_secs = 0
     while not need_wait.empty?
-      puts "waiting #{wait_secs} for pending tasks: #{need_wait}"
-      sleep wait_secs
       if wait_secs < 60
         wait_secs += 10
       end
+      puts "waiting #{wait_secs} for pending tasks: #{need_wait}" unless silence
+      sleep wait_secs
+      last_need_wait = need_wait
       need_wait = []
       tasks.each do |task_id|
         req = @api.resource(:foreman_tasks).call(:show, {:id => task_id})
         if req['pending']
           need_wait << task_id
         end
+      end
+      if (wait_secs >= 60 and (last_need_wait.sort == need_wait.sort))
+          puts "Silencing output until there's a task status change..." unless silence
+          silence = true
+      else
+          silence = false
       end
     end
   end
