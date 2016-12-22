@@ -34,6 +34,7 @@ require 'time'
   :wait        => false,
   :sequential  => false,
   :promote_cvs => false,
+  :checkrepos  => false,
 }
 
 @options = {
@@ -84,6 +85,9 @@ optparse = OptionParser.new do |opts|
   opts.on("--sequential", "wait for each started task to finish before starting the next one") do
     @options[:wait] = true
     @options[:sequential] = true
+  end
+  opts.on("--checkrepos", "check repository content was changed before publish") do
+    @options[:checkrepos] = true
   end
 end
 optparse.parse!
@@ -284,6 +288,7 @@ end
 
 def publish()
   tasks = []
+  searchtasks = []
 
   cvs = []
   req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
@@ -312,8 +317,44 @@ def publish()
         repo_last_sync = Time.new(0)
       end
       if repo_last_sync > cv_last_published
-        puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
-        needs_publish = true
+        if @options[:checkrepos]
+          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}), checking if sync contains new packages."
+          sync_task = @api.resource(:foreman_tasks).call(:show, {:id => repo['last_sync']['id']})
+          if sync_task['humanized']['output'] == "No new packages."
+            puts " #{sync_task['humanized']['output']} Found in last sync task, will search for past sync tasks."
+            taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true}, :per_page => 100, :sort_by => :ended_at)
+            searchtasks.concat(taskreq['results'])
+            while (taskreq['results'].length == taskreq['per_page'].to_i)
+              taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true, :per_page => taskreq['per_page'], :sort_by => :ended_at, :page => taskreq['page'].to_i+1})
+              searchtasks.concat(taskreq['results'])
+            end
+            searchtasks.each do |tasker|
+              next if tasker['id'] == sync_task['id']
+              task_completed_at = Time.xmlschema(tasker['ended_at']) rescue Time.parse(tasker['ended_at'])
+              if task_completed_at >= cv_last_published
+                if tasker['input']['repository']['id'] == repo['id']
+                  puts "Found past task from #{task_completed_at} that matches repo id: #{tasker['input']['repository']['id']}"
+                  if tasker['humanized']['output'] == "No new packages."
+                    puts " #{tasker['humanized']['output']} This past task will NOT trigger a publish."
+                  else
+                    puts " #{tasker['humanized']['output']} This past task will trigger a publish."
+                    needs_publish = true
+                    break
+                  end
+                end
+              else
+                puts " No more past tasks found, Publish will be SKIPPED."
+                break
+              end
+            end
+          else
+            puts " #{sync_task['humanized']['output']} Will Publish."
+            needs_publish = true
+          end
+        else
+          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
+          needs_publish = true
+        end
       end
     end
     if not needs_publish and @options[:force]

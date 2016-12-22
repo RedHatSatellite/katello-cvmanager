@@ -18,9 +18,10 @@ The `cvmanager` tool can execute this task when called as `cvmanager clean`. By 
 
 Sometimes it can be beneficial to automatically update specific Content Views, for example the base OS Content View should be kept uptodate with the upstream OS repositories. To achieve that Katello/Satellite can schedule syncs of the repositories, but the synced content will not be available to the clients until the administrator publishes a new version of a Content View containing these repositories.
 
-`cvmanager` can be configured to automatically publish new versions of Content Views if it detects changes to the contained repositories. Please note that the detection is only checking that the repository was synced after the last publish of the Content View, no verification is done whether the sync actually contained new packages.
+`cvmanager` can be configured to automatically publish new versions of Content Views if it detects changes to the contained repositories. Please note that the detection is only checking that the repository was synced after the last publish of the Content View, no verification is done whether the sync actually contained new packages. The option checkrepos will check the sync task and check if new packages were downloaded or not. If no new packages were downloaded, then the repository will not be marked for publish.
 
 To use this feature, configure the `publish` array in the configuration file and call `cvmanager publish`.
+The checkrepos option can be enabled using the `checkrepos` flag in the configuration file or by passing `--checkrepos` to `cvmanager publish`.
 
 
 ## Automated Updates
@@ -84,6 +85,7 @@ Example configuration for `cvmanager`:
 * `keep`: how many non-published versions of a Content View shall be kept when doing a `clean`
 * `wait`: should cvmanager wait for tasks to finish, or run them in the background
 * `sequential`: should cvmanager wait for each task to finish before starting the next one
+* `checkrepos`: should cvmanager check that repo packages were actually downloaded before flagging for publish, or just publish if a sync executed
 
 
 ## Example Workflows
