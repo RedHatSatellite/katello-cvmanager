@@ -32,6 +32,7 @@ require 'time'
   :lifecycle   => 1,
   :force       => false,
   :wait        => false,
+  :sequential  => false,
   :promote_cvs => false,
 }
 
@@ -79,6 +80,10 @@ optparse = OptionParser.new do |opts|
   end
   opts.on("--wait", "wait for started tasks to finish") do
     @options[:wait] = true
+  end
+  opts.on("--sequential", "wait for each started task to finish before starting the next one") do
+    @options[:wait] = true
+    @options[:sequential] = true
   end
 end
 optparse.parse!
@@ -152,6 +157,7 @@ def clean()
         if not @options[:noop]
           req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
           tasks << req['id']
+          wait([req['id']]) if @options[:sequential]
         else
           puts " [noop] would delete content view version with id #{version['id']}"
         end
@@ -231,6 +237,7 @@ def update()
       if not @options[:noop]
         req = @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
         tasks << req['id']
+        wait([req['id']]) if @options[:sequential]
       else
         puts "  [noop] publishing CCV #{ccv['id']}"
       end
@@ -265,6 +272,7 @@ def promote()
       if not @options[:noop]
         req = @api.resource(:content_view_versions).call(:promote, {:id => latest_version['id'], :environment_id => @options[:lifecycle]})
         tasks << req['id']
+        wait([req['id']]) if @options[:sequential]
       else
         puts " [noop] Promoting #{latest_version['id']} to lifecycle-environment #{@options[:lifecycle]}"
       end
@@ -316,6 +324,7 @@ def publish()
       if not @options[:noop]
         req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
         tasks << req['id']
+        wait([req['id']]) if @options[:sequential]
       else
         puts " [noop] Publishing #{cv['name']}"
       end
