@@ -35,6 +35,7 @@ require 'time'
   :sequential  => false,
   :promote_cvs => false,
   :checkrepos  => false,
+  :verbose     => false,
 }
 
 @options = {
@@ -89,6 +90,9 @@ optparse = OptionParser.new do |opts|
   opts.on("--checkrepos", "check repository content was changed before publish") do
     @options[:checkrepos] = true
   end
+  opts.on("--verbose]", "Get verbose logs from cvmanager") do
+    @options[:verbose] = true
+  end
 end
 optparse.parse!
 
@@ -135,6 +139,11 @@ end
 
 @api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
 
+def puts_verbose(message)
+  if @opts[:verbose]
+    puts "    [VERBOSE] #{message}"
+  end
+end
 
 def clean()
   tasks = []
@@ -321,32 +330,48 @@ def publish()
           puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}), checking if sync contains new packages."
           sync_task = @api.resource(:foreman_tasks).call(:show, {:id => repo['last_sync']['id']})
           if sync_task['humanized']['output'] == "No new packages."
-            puts " #{sync_task['humanized']['output']} Found in last sync task, will search for past sync tasks."
-            taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true}, :per_page => 100, :sort_by => :ended_at)
-            searchtasks.concat(taskreq['results'])
-            while (taskreq['results'].length == taskreq['per_page'].to_i)
-              taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true, :per_page => taskreq['per_page'], :sort_by => :ended_at, :page => taskreq['page'].to_i+1})
-              searchtasks.concat(taskreq['results'])
-            end
-            searchtasks.each do |tasker|
-              next if tasker['id'] == sync_task['id']
-              task_completed_at = Time.xmlschema(tasker['ended_at']) rescue Time.parse(tasker['ended_at'])
-              if task_completed_at >= cv_last_published
-                if tasker['input']['repository']['id'] == repo['id']
-                  puts "Found past task from #{task_completed_at} that matches repo id: #{tasker['input']['repository']['id']}"
-                  if tasker['humanized']['output'] == "No new packages."
-                    puts " #{tasker['humanized']['output']} This past task will NOT trigger a publish."
+            puts " '#{sync_task['humanized']['output']}' Found in last sync task, will search now for past sync tasks for packages not in the CV."
+            # Initialize to start the iteration, garbage collection needed and performed below.
+            taskreq = nil
+            begin
+              while (taskreq == nil or taskreq['results'].length == taskreq['per_page'].to_i)
+                if (taskreq == nil)
+                  taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true}, :per_page => 100, :sort_by => :ended_at)
+                  puts_verbose "Inspecing sync tasks to #100"
+                else
+                  taskreq = @api.resource(:foreman_tasks).call(:index, {:search => 'label=Actions::Katello::Repository::Sync', :full_results => true, :per_page => taskreq['per_page'], :sort_by => :ended_at, :page => taskreq['page'].to_i+1})
+                  puts_verbose "Inspecing sync tasks to ##{taskreq['per_page']}"
+                end
+                searchtasks.each do |tasker|
+                  next if tasker['id'] == sync_task['id']
+                  task_completed_at = Time.xmlschema(tasker['ended_at']) rescue Time.parse(tasker['ended_at'])
+                  if task_completed_at >= cv_last_published
+                    if tasker['input']['repository']['id'] == repo['id']
+                      puts "Found past task from #{task_completed_at} that matches repo id: #{tasker['input']['repository']['id']}"
+                      if tasker['humanized']['output'] == "No new packages."
+                        puts " Task output: '#{tasker['humanized']['output']}'. This past task will NOT trigger a Publish."
+                      else
+                        puts " Task output: '#{tasker['humanized']['output']}'. This past task will trigger a Publish."
+                        needs_publish = true
+                        raise "publish"
+                      end
+                    end
                   else
-                    puts " #{tasker['humanized']['output']} This past task will trigger a publish."
-                    needs_publish = true
-                    break
+                    # if date will be past then last published, skip other task check
+                    puts " No more past tasks found, Publish will be SKIPPED."
+                    raise "skip_ages"
                   end
                 end
-              else
-                puts " No more past tasks found, Publish will be SKIPPED."
-                break
               end
+              # if we reach this point, all of the tasks has been parsed:
+              # no repo that would trigger a publish has been found AND the task date is newer then last publish
+              puts "  No more tasks are found, Publish will be SKIPPED."
+              raise "skip_parsed"
+            rescue
+              puts_verbose "  Repo: '#{repo['label']}'. Exiting from loop, reason: #{error.cause.inspect}"
             end
+            # forcing also garbage collection to run. 250MB of memory estimated.
+            taskreq = nil
           else
             puts " #{sync_task['humanized']['output']} Will Publish."
             needs_publish = true
