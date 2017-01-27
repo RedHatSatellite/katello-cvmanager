@@ -330,6 +330,7 @@ def publish()
             end
             searchtasks.each do |tasker|
               next if tasker['id'] == sync_task['id']
+              next if tasker['result'] != 'success'
               task_completed_at = Time.xmlschema(tasker['ended_at']) rescue Time.parse(tasker['ended_at'])
               if task_completed_at >= cv_last_published
                 if tasker['input']['repository']['id'] == repo['id']
