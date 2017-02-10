@@ -388,7 +388,6 @@ def publish()
                 end
                 # iterate over the results
                 taskreq['results'].each do |tasker|
-                #searchtasks.each do |tasker|
                   # if the task id is the same as the task extracted before loop, continue
                   next if tasker['id'] == sync_task['id']
                     # if task has been completed after cv publish, check if the task that we are checking are for the repo id we are looking for
