@@ -226,16 +226,20 @@ def update()
       # never touch non-mentioned components
       if @yaml[:ccv].is_a?(Hash) and @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label'])
         desired_version = @yaml[:ccv][ccv['label']][component['content_view']['label']]
+        puts_verbose "  Found new version #{desired_version} in CCV part of the config"
       elsif @yaml[:cv].is_a?(Hash) and @yaml[:cv].has_key?(component['content_view']['label'])
         desired_version = @yaml[:cv][component['content_view']['label']]
+        puts_verbose "  Found new version #{desired_version} in CV part of the config"
       else
         desired_version = component['version']
+        puts_verbose "  Did not find a new version, keeping #{desired_version}"
       end
 
       # instead of hard-coding the versions, the user can also specify "latest"
       if desired_version == 'latest'
         cvversions = @api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
         desired_version = cvversions['results'][0]['version']
+        puts_verbose "  Found #{desired_version} as the 'latest' version"
       end
 
       # if the version of the component does not match the one the user requested update it
