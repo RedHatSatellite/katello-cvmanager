@@ -226,13 +226,13 @@ def update()
       # never touch non-mentioned components
       if @yaml[:ccv].is_a?(Hash) and @yaml[:ccv].has_key?(ccv['label']) and @yaml[:ccv][ccv['label']].has_key?(component['content_view']['label'])
         desired_version = @yaml[:ccv][ccv['label']][component['content_view']['label']]
-        puts_verbose "  Found new version #{desired_version} in CCV part of the config"
+        puts_verbose "  Desired version #{desired_version} found in CCV"
       elsif @yaml[:cv].is_a?(Hash) and @yaml[:cv].has_key?(component['content_view']['label'])
         desired_version = @yaml[:cv][component['content_view']['label']]
-        puts_verbose "  Found new version #{desired_version} in CV part of the config"
+        puts_verbose "  Desired version #{desired_version} found in CV"
       else
-        desired_version = component['version']
-        puts_verbose "  Did not find a new version, keeping #{desired_version}"
+        puts_verbose "  Desired version not found, skipping"
+        next
       end
 
       # instead of hard-coding the versions, the user can also specify "latest"
