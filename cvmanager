@@ -354,7 +354,7 @@ def publish()
       # get repo data
       repo = @api.resource(:repositories).call(:show, {:id => repo_id})
       # check if the last sync has been ever completed
-      if repo.has_key?('last_sync') and repo['last_sync'].has_key?('ended_at') and repo['last_sync']['ended_at']
+      if repo.has_key?('last_sync') and repo['last_sync'] and repo['last_sync'].has_key?('ended_at') and repo['last_sync']['ended_at']
         # if sync completed, save last end sync time
         repo_last_sync = Time.xmlschema(repo['last_sync']['ended_at']) rescue Time.parse(repo['last_sync']['ended_at'])
       else
