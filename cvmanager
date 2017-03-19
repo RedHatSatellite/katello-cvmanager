@@ -36,6 +36,7 @@ require 'time'
   :promote_cvs => false,
   :checkrepos  => false,
   :verbose     => false,
+  :description => 'autopublish',
 }
 
 @options = {
@@ -73,6 +74,9 @@ optparse = OptionParser.new do |opts|
   end
   opts.on("-l", "--to-lifecycle-environment=ID", OptionParser::DecimalInteger, "which LE should the promote be done to") do |l|
     @options[:lifecycle] = l
+  end
+  opts.on("-d", "--description=STRING", "Description to use for publish operations") do |d|
+    @options[:description] = d
   end
   opts.on("-n", "--noop", "do not actually execute anything") do
     @options[:noop] = true
@@ -268,7 +272,7 @@ def update()
       puts " Publishing new version as CCV had changes"
       # do the publish
       if not @options[:noop]
-        req = @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => "automatic update"})
+        req = @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => @options[:description]})
         tasks << req['id']
         wait([req['id']]) if @options[:sequential]
       else
@@ -428,7 +432,7 @@ def publish()
     if needs_publish
       puts "Publishing #{cv['name']}"
       if not @options[:noop]
-        req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => 'autopublish'})
+        req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => @options[:description]})
         tasks << req['id']
         wait([req['id']]) if @options[:sequential]
       else
