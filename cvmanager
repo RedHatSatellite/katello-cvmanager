@@ -163,9 +163,15 @@ def clean()
     keep = []
     puts "Inspecting #{cv['name']}"
     cv['versions'].sort_by { |v| v['version'].to_f }.reverse.each do |version|
-      next if not version['environment_ids'].empty?
+      if not version['environment_ids'].empty?
+        puts_verbose " #{cv['name']} v#{version['version']} is published to the following environments: #{version['environment_ids']}, skipping."
+        next
+      end
       version_details = @api.resource(:content_view_versions).call(:show, {:id => version['id']})
-      next if not version_details['composite_content_view_ids'].empty?
+      if not version_details['composite_content_view_ids'].empty?
+        puts_verbose " #{cv['name']} v#{version['version']} is used by the following composite contentviews: #{version_details['composite_content_view_ids']}, skipping."
+        next
+      end
       if keep.length < @options[:keep]
         keep.push(version)
         puts " keeping #{version['version']}"
