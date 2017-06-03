@@ -248,7 +248,8 @@ def update()
       # instead of hard-coding the versions, the user can also specify "latest"
       if desired_version == 'latest'
         cvversions = @api.resource(:content_view_versions).call(:index, {:content_view_id => component['content_view']['id']})
-        desired_version = cvversions['results'][0]['version']
+        cvversions = cvversions['results'].sort_by { |v| v['version'].to_f }.reverse
+        desired_version = cvversions[0]['version']
         puts_verbose "  Found #{desired_version} as the 'latest' version"
       end
 
