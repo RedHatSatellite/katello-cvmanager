@@ -32,7 +32,7 @@ require 'time'
   :lifecycle   => 1,
   :force       => false,
   :wait        => false,
-  :sequential  => false,
+  :sequential  => 0,
   :promote_cvs => false,
   :checkrepos  => false,
   :verbose     => false,
@@ -87,9 +87,9 @@ optparse = OptionParser.new do |opts|
   opts.on("--wait", "wait for started tasks to finish") do
     @options[:wait] = true
   end
-  opts.on("--sequential", "wait for each started task to finish before starting the next one") do
+  opts.on("--sequential [NUM]", OptionParser::DecimalInteger, "wait for each (or NUM) started task(s) to finish before starting the next one") do |s|
     @options[:wait] = true
-    @options[:sequential] = true
+    @options[:sequential] = s || 1
   end
   opts.on("--checkrepos", "check repository content was changed before publish") do
     @options[:checkrepos] = true
@@ -180,7 +180,9 @@ def clean()
         if not @options[:noop]
           req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
           tasks << req['id']
-          wait([req['id']]) if @options[:sequential]
+          if @options[:sequential] > 0 and tasks.length >= @options[:sequential]
+            tasks = wait(tasks)
+          end
         else
           puts " [noop] would delete content view version with id #{version['id']}"
         end
@@ -281,7 +283,9 @@ def update()
       if not @options[:noop]
         req = @api.resource(:content_views).call(:publish, {:id => ccv['id'], :description => @options[:description]})
         tasks << req['id']
-        wait([req['id']]) if @options[:sequential]
+        if @options[:sequential] > 0 and tasks.length >= @options[:sequential]
+          tasks = wait(tasks)
+        end
       else
         puts "  [noop] publishing CCV #{ccv['id']}"
       end
@@ -441,7 +445,9 @@ def publish()
       if not @options[:noop]
         req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => @options[:description]})
         tasks << req['id']
-        wait([req['id']]) if @options[:sequential]
+        if @options[:sequential] > 0 and tasks.length >= @options[:sequential]
+          tasks = wait(tasks)
+        end
       else
         puts " [noop] published #{cv['name']}"
       end
@@ -451,8 +457,8 @@ def publish()
 end
 
 def wait(tasks)
+  need_wait = tasks
   if @options[:wait]
-    need_wait = tasks
     last_need_wait = []
     silence = false
     wait_secs = 0
@@ -478,6 +484,7 @@ def wait(tasks)
       end
     end
   end
+  return need_wait
 end
 
 action = ARGV.shift
