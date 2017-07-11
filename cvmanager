@@ -37,6 +37,7 @@ require 'time'
   :checkrepos  => false,
   :verbose     => false,
   :description => 'autopublish',
+  :verify_ssl  => true,
 }
 
 @options = {
@@ -97,6 +98,9 @@ optparse = OptionParser.new do |opts|
   opts.on("--verbose", "Get verbose logs from cvmanager") do
     @options[:verbose] = true
   end
+  opts.on("--no-verify-ssl", "don't verify SSL certs") do
+    @options[:verify_ssl] = false
+  end
 end
 optparse.parse!
 
@@ -141,7 +145,7 @@ end
   end
 end
 
-@api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]})
+@api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]}, {:verify_ssl => @options[:verify_ssl]})
 
 def puts_verbose(message)
   if @options[:verbose]
