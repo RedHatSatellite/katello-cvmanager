@@ -213,6 +213,16 @@ def checktask(task, last_date)
   return false
 end
 
+def checkoldtask(task, last_date)
+  task_completed_at = Time.xmlschema(task['ended_at']) rescue Time.parse(task['ended_at'])
+  if task_completed_at >= last_date
+    puts_verbose "Past task was completed at #{task_completed_at}, which is after #{last_date}. Continue to inspect."
+    return false
+  end
+  puts_verbose "#{task_completed_at} is before #{last_date}, no sense to continue."
+  return true
+end
+
 def update()
   tasks = []
 
@@ -412,6 +422,10 @@ def publish()
                     # if task has been completed after cv publish, check if the task that we are checking are for the repo id we are looking for
                     if tasker['input']['repository']['id'] == repo['id']
                       puts_verbose "Found past task that matches repo id: #{tasker['input']['repository']['id']}"
+                      # Avoid to check old publications
+                      if ( checkoldtask(tasker, cv_last_published) )
+                         raise "skip_parsed"
+                      end
                       if ( checktask(tasker, cv_last_published) )
                         needs_publish = true
                         raise "publish"
