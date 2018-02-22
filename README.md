@@ -86,6 +86,7 @@ Example configuration for `cvmanager`:
 * `wait`: should cvmanager wait for tasks to finish, or run them in the background
 * `sequential`: should cvmanager wait for each task to finish before starting the next one
 * `checkrepos`: should cvmanager check that repo packages were actually downloaded before flagging for publish, or just publish if a sync executed
+* `promote_cvs`: allow promotion of content-views
 
 
 ## Example Workflows
@@ -127,3 +128,34 @@ If needed, the `promote` step can be executed multiple times with `--to-lifecycl
 
     cvmanager --wait promote --to-lifecycle-environment 3
     cvmanager --wait promote --to-lifecycle-environment 4
+
+### Fully automated CV for automated patching
+
+When using CV instead of CCV
+
+#### Configuration
+
+    :settings:
+      :user: admin
+      :pass: changeme
+      :uri: https://localhost
+      :org: 1
+      :lifecycle: 2
+      :promote_cvs: true
+    :cv:
+      cv-RHEL7: latest
+    :publish:
+      - cv-RHEL7
+    :promote:
+      - cv-RHEL7
+
+#### Execution
+
+Same as the above example but without update since it's only related to CCVs
+
+    #!/bin/sh
+
+    set -e
+
+    cvmanager --wait publish
+    cvmanager --wait promote
