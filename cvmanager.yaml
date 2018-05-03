@@ -8,6 +8,6 @@
   :lifecycle: 2
   :keep: 5
 :cv:
-  something: 1
+  label_something: 1
 :ccv:
-  something: 2
+  label_something: 2

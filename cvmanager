@@ -165,15 +165,15 @@ def clean()
 
   cvs.each do |cv|
     keep = []
-    puts "Inspecting #{cv['name']}"
+    puts "Inspecting #{cv['label']}"
     cv['versions'].sort_by { |v| v['version'].to_f }.reverse.each do |version|
       if not version['environment_ids'].empty?
-        puts_verbose " #{cv['name']} v#{version['version']} is published to the following environments: #{version['environment_ids']}, skipping."
+        puts_verbose " #{cv['label']} v#{version['version']} is published to the following environments: #{version['environment_ids']}, skipping."
         next
       end
       version_details = @api.resource(:content_view_versions).call(:show, {:id => version['id']})
       if not version_details['composite_content_view_ids'].empty?
-        puts_verbose " #{cv['name']} v#{version['version']} is used by the following composite contentviews: #{version_details['composite_content_view_ids']}, skipping."
+        puts_verbose " #{cv['label']} v#{version['version']} is used by the following composite contentviews: #{version_details['composite_content_view_ids']}, skipping."
         next
       end
       if keep.length < @options[:keep]
@@ -239,12 +239,12 @@ def update()
 
     was_updated = false
 
-    puts "Inspecting #{ccv['name']}"
+    puts "Inspecting #{ccv['label']}"
 
     # loop through the components and check if they are uptodate
     ids = Array.new(ccv['component_ids'])
     ccv['components'].each do |component|
-      puts " Checking #{component['content_view']['name']}"
+      puts " Checking #{component['content_view']['label']}"
 
       # get the desired version for this component from the YAML
       # either the version for the component in this CCV is set
@@ -322,9 +322,9 @@ def promote()
 
   ccvs.each do |ccv|
     next if not ccv['composite'] and not @options[:promote_cvs]
-    next if not @yaml[:promote].include?(ccv['name']) and not @yaml[:promote].include?("all")
+    next if not @yaml[:promote].include?(ccv['label']) and not @yaml[:promote].include?("all")
 
-    puts "Inspecting #{ccv['name']}"
+    puts "Inspecting #{ccv['label']}"
 
     latest_version = ccv['versions'].sort_by { |v| v['version'].to_f }.reverse[0]
     next if ! latest_version
@@ -357,11 +357,11 @@ def publish()
 
   cvs.each do |cv|
     # if CV is not listed in csv, skip
-    puts_verbose "Checking Content View #{cv['name']}"
-    next if not @yaml[:publish].include?(cv['name'])
+    puts_verbose "Checking Content View #{cv['label']}"
+    next if not @yaml[:publish].include?(cv['label'])
 
     # if the CV is listed, write it
-    puts "Inspecting #{cv['name']} as listed in CSV"
+    puts "Inspecting #{cv['label']} as listed in CSV"
 
     # initialize variables
     needs_publish = false
@@ -395,7 +395,7 @@ def publish()
         # if checkrepo option is on, a deeper check will be done
         if @options[:checkrepos]
           # write some info about repo that we are checking
-          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}), checking if sync contains new packages."
+          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['label']} (id: #{cv['id']}), checking if sync contains new packages."
           # get last sync repo output from foreman task
           sync_task = @api.resource(:foreman_tasks).call(:show, {:id => repo['last_sync']['id']})
           # check if the package contains "No new package.". The opposite is a number of packages.
@@ -447,7 +447,7 @@ def publish()
             needs_publish = true
           end
         else
-          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['name']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
+          puts " repo #{repo['label']} (id: #{repo['id']}) seems newer than CV #{cv['label']} (id: #{cv['id']}) (#{repo_last_sync} > #{cv_last_published}), lets publish"
           needs_publish = true
         end
       end
@@ -459,7 +459,7 @@ def publish()
     end
     # finally if the CV has to be published, do it
     if needs_publish
-      puts "Publishing #{cv['name']}"
+      puts "Publishing #{cv['label']}"
       if not @options[:noop]
         req = @api.resource(:content_views).call(:publish, {:id => cv['id'], :description => @options[:description]})
         tasks << req['id']
@@ -467,7 +467,7 @@ def publish()
           tasks = wait(tasks)
         end
       else
-        puts " [noop] published #{cv['name']}"
+        puts " [noop] published #{cv['label']}"
       end
     end
   end
