@@ -156,6 +156,7 @@ end
 def clean()
   tasks = []
   cvs = []
+  firstcv = true
   req = @api.resource(:content_views).call(:index, {:organization_id => @options[:org], :full_results => true})
   cvs.concat(req['results'])
   while (req['results'].length == req['per_page'].to_i)
@@ -163,18 +164,34 @@ def clean()
     cvs.concat(req['results'])
   end
 
+  # Sort the results so that we first process all Composite Content Views
+  # and then the Content Views. This cleans up CCVs that might reference CVs.
+  cvs.sort_by! { |cv| cv["composite"] ? 0 : 1 }
+
+  # Parse the CV
   cvs.each do |cv|
     keep = []
     puts "Inspecting #{cv['label']}"
+    # The first Content View we encounter indicates that we processed all Composite Content Views.
+    # Wait until the CCV tasks are finished.
+    if not cv["composite"] and firstcv and tasks.any?
+      puts "First Content View, waiting for the Composite Content View tasks to be completed"
+      firstcv = false
+      wait(tasks)
+    end
     cv['versions'].sort_by { |v| v['version'].to_f }.reverse.each do |version|
       if not version['environment_ids'].empty?
         puts_verbose " #{cv['label']} v#{version['version']} is published to the following environments: #{version['environment_ids']}, skipping."
         next
+      else
+        puts_verbose " #{cv['label']} v#{version['version']} is not used by any environment."
       end
       version_details = @api.resource(:content_view_versions).call(:show, {:id => version['id']})
       if not version_details['composite_content_view_ids'].empty?
         puts_verbose " #{cv['label']} v#{version['version']} is used by the following composite contentviews: #{version_details['composite_content_view_ids']}, skipping."
         next
+      else
+        puts_verbose " #{cv['label']} v#{version['version']} is not used by any composite contentviews."
       end
       if keep.length < @options[:keep]
         keep.push(version)
@@ -182,13 +199,20 @@ def clean()
       else
         puts " removing #{version['version']}"
         if not @options[:noop]
-          req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
-          tasks << req['id']
+          begin
+            req = @api.resource(:content_view_versions).call(:destroy, {:id => version['id']})
+            tasks << req['id']
+          rescue RestClient::ExceptionWithResponse => err
+            puts " removal of #{cv['label']}, id #{cv['id']} v#{version['version']} failed. Error message '#{err.response}'"
+          end
           if @options[:sequential] > 0 and tasks.length >= @options[:sequential]
             tasks = wait(tasks)
+            puts "  removed content view version with id #{version['id']}"
+          else
+            puts "  [task enqueued] removed content view version with id #{version['id']}"
           end
         else
-          puts " [noop] would delete content view version with id #{version['id']}"
+          puts "  [noop] removed content view version with id #{version['id']}"
         end
       end
     end
