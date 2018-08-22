@@ -90,6 +90,16 @@ Example configuration for `cvmanager`:
 * `promote_cvs`: allow promotion of content-views
 
 
+## Permissions
+
+The following permissions are required to run `cvmanager`:
+
+| Resource | Permissions |
+|----------|-------------|
+| Content Views | view_content_views, publish_content_views, promote_or_remove_content_views, destroy_content_views|
+| Lifecycle Environment | promote_or_remove_content_views_to_environments|
+| Product and Repositories | view_products |
+
 ## Example Workflows
 
 ### Fully automated CCV for automated patching
