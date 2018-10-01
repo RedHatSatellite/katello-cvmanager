@@ -500,6 +500,7 @@ end
 
 def wait(tasks)
   need_wait = tasks
+  resumed_tasks = []
   if @options[:wait]
     last_need_wait = []
     silence = false
@@ -516,6 +517,11 @@ def wait(tasks)
         req = @api.resource(:foreman_tasks).call(:show, {:id => task_id})
         if req['pending']
           need_wait << task_id
+        end
+        if req['state'] == 'paused' and not resumed_tasks.include?(task_id)
+          puts "Resuming paused task #{task_id}"
+          @api.resource(:foreman_tasks).call(:bulk_resume, {:task_ids => [task_id]})
+          resumed_tasks << task_id
         end
       end
       if (wait_secs >= 60 and (last_need_wait.sort == need_wait.sort))
