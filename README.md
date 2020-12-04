@@ -1,5 +1,9 @@
 # cvmanager
 
+❗❗❗ cvmanager is deprecated, please use [foreman-ansible-modules](https://github.com/theforeman/foreman-ansible-modules/) to manage your content views ❗❗❗
+
+❗❗❗ [how to migrate from cvmanager to Foreman Modules](https://theforeman.github.io/foreman-ansible-modules/v1.5.0/cvmanager.html) ❗❗❗
+
 For automation of some common tasks related to Content Views we created a tool called `cvmanager`. It consists of a Ruby script (`cvmanager`) and a YAML-formatted configuration file (`cvmanager.yaml`). The various features are described in the following chapters.
 
 `cvmanager` is designed so that it can be run from `cron` or some other kind of scheduler easily.
